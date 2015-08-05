@@ -6,10 +6,12 @@ export OS_USERNAME=safchain
 export OS_PASSWORD=redhat123
 export OS_AUTH_URL="https://identity.lab0.aub.cloudwatt.net/v2.0/"
 
+TLD="occi."
+
 unique_name()
 {
-  UUID=$( cat /proc/sys/kernel/random/uuid | cut -d '-' -f 1 )
-  echo $1-$UUID
+     UUID=$( cat /proc/sys/kernel/random/uuid | cut -d '-' -f 1 )
+     echo $1-$UUID
 }
 
 wait_for_controller()
@@ -53,6 +55,21 @@ ssh_command()
     ssh -oStrictHostKeyChecking=no $IP "$CMD"
 }
 
+register_dns()
+{
+    NODE_NAME=$1
+    NODE_IP=$( get_usr_ip $NODE_NAME )
+
+    # A
+    ( echo update del $NODE_NAME.$TLD ; echo send ) | sudo nsupdate -v -l -k /etc/bind/rndc.key
+    ( echo update add $NODE_NAME.$TLD 300 A $NODE_IP ; echo send ) | sudo nsupdate -v -l -k /etc/bind/rndc.key
+
+    # PTR
+    PTR=$( echo $NODE_IP | awk 'BEGIN{FS="."}{print $4"."$3"."$2"."$1".in-addr.arpa"}' )
+    ( echo update del $PTR ; echo send ) | sudo nsupdate -v -l -k /etc/bind/rndc.key
+    ( echo update add $PTR 300 PTR $NODE_NAME.$TLD ; echo send ) | sudo nsupdate -v -l -k /etc/bind/rndc.key
+}
+
 get_post_install_config()
 {
     CONFIG_IP=$( get_usr_ip $1 )
@@ -79,6 +96,10 @@ EOF
 
 CONTROLLER1=$( spawn_controller )
 CONTROLLER2=$( spawn_controller )
+
+register_dns $CONTROLLER1
+register_dns $CONTROLLER2
+
 
 #CONTROLLER1=controller-e8df6de0
 #CONTROLLER2=controller-1a4f0072
