@@ -1,5 +1,7 @@
 #!/bin/bash
 
+[ -z $OS_USERNAME ] && echo "Source OS credentials first." && exit 0
+
 TLD="occi."
 KEY_NAME="bootstrap"
 IMAGE="5db66a8a-3165-4606-982d-43e89846c16f"
