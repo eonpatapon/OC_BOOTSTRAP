@@ -6,6 +6,10 @@ export OS_PASSWORD=redhat123
 export OS_AUTH_URL="https://identity.lab0.aub.cloudwatt.net/v2.0/"
 
 TLD="occi."
+KEY_NAME="bootstrap"
+IMAGE="5db66a8a-3165-4606-982d-43e89846c16f"
+ADM_NETWORK="c2abf4aa-3631-4d6d-a4ab-f54fed99bdfb"
+USR_NETWORK="95b20e17-38c1-446e-b2b5-eecf6ced198f"
 
 
 unique_name()
@@ -30,7 +34,9 @@ spawn_controller()
 {
     CONTROLLER_UUID=$( unique_name "controller" )
     
-    nova --insecure boot --flavor m1.large --image 5db66a8a-3165-4606-982d-43e89846c16f --key-name safchain --nic net-id=c2abf4aa-3631-4d6d-a4ab-f54fed99bdfb --nic net-id=95b20e17-38c1-446e-b2b5-eecf6ced198f --user-data controller.yaml $CONTROLLER_UUID > /dev/null
+    nova --insecure boot --flavor m1.large --image $IMAGE --key-name $KEY_NAME \
+        --nic net-id=$ADM_NETWORK --nic net-id=$USR_NETWORK \
+        --user-data controller.yaml $CONTROLLER_UUID > /dev/null
 
     echo $CONTROLLER_UUID
 }
