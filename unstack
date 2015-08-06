@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+import sys
 from subprocess import call
 
 bootstraps = []
@@ -36,13 +37,17 @@ if __name__ == "__main__":
         bootstraps = h.readlines()
     bootstraps = [b.strip().split() for b in bootstraps]
 
+    if not bootstraps:
+        print("Nothing to unstack")
+        sys.exit()
+
     for idx, b in enumerate(bootstraps):
         print ("{:d} - {} ({} {}, public subnet: {})".format(idx, *b))
 
     choice = input("Your choice : ")
     try:
         infos = bootstraps[int(choice)]
-    except IndexError:
+    except (IndexError, ValueError):
         print("You failed.")
     else:
         delete_bootstrap(*infos)
