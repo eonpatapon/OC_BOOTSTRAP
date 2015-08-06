@@ -107,7 +107,8 @@ EOF
 
 CONTROLLER1=$( spawn_controller )
 CONTROLLER2=$( spawn_controller )
-PUBLIC_SUBNET=10.$((($RANDOM % 255) + 1)).$((($RANDOM % 255) + 1)).0/24
+# From 10.10.0.0 to 10.210.255.0 to not conflict with VPN routes
+PUBLIC_SUBNET=10.$((($RANDOM % 200) + 10)).$((($RANDOM % 255) + 1)).0/24
 
 register_dns $CONTROLLER1
 register_dns $CONTROLLER2
