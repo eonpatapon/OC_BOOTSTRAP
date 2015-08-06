@@ -1,0 +1,48 @@
+#!/usr/bin/python
+
+from subprocess import call
+
+bootstraps = []
+
+
+def delete_instance(name):
+    print("Removing instance {}".format(name))
+    if not call(["nova", "--insecure", "delete", name]) == 0:
+        print("Failed :(")
+
+
+def delete_route(subnet):
+    print("Removing route to {}".format(subnet))
+    if not call(["sudo", "ip", "route", "del", subnet]) == 0:
+        print("Failed :(")
+
+
+def delete_bootstrap(*infos):
+    date, controller1, controller2, subnet = infos
+    delete_instance(controller1)
+    delete_instance(controller2)
+    delete_route(subnet)
+    # Remove deleted bootstrap from file
+    with open('bootstraped', 'r+') as h:
+        content = "\n".join(filter(lambda l: " ".join(infos) not in l, h))
+        h.seek(0)
+        h.truncate()
+        h.write(content)
+
+
+if __name__ == "__main__":
+
+    with open('bootstraped') as h:
+        bootstraps = h.readlines()
+    bootstraps = [b.strip().split() for b in bootstraps]
+
+    for idx, b in enumerate(bootstraps):
+        print ("{:d} - {} ({} {}, public subnet: {})".format(idx, *b))
+
+    choice = input("Your choice : ")
+    try:
+        infos = bootstraps[int(choice)]
+    except IndexError:
+        print("You failed.")
+    else:
+        delete_bootstrap(*infos)
