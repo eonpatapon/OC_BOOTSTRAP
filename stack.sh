@@ -1,10 +1,5 @@
 #!/bin/bash
 
-export OS_TENANT_NAME=safchain
-export OS_USERNAME=safchain
-export OS_PASSWORD=redhat123
-export OS_AUTH_URL="https://identity.lab0.aub.cloudwatt.net/v2.0/"
-
 TLD="occi."
 KEY_NAME="bootstrap"
 IMAGE="5db66a8a-3165-4606-982d-43e89846c16f"
