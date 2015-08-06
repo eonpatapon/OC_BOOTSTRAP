@@ -73,8 +73,8 @@ register_dns()
 get_post_install_config()
 {
     CONFIG_IP=$( get_usr_ip $1 )
-    CONTROLLER1_IP=$( get_usr_ip $1 )
-    CONTROLLER2_IP=$( get_usr_ip $2 )
+    CONTROLLER1_IP=$( get_usr_ip $2 )
+    CONTROLLER2_IP=$( get_usr_ip $3 )
 
 cat <<EOF
 
@@ -101,10 +101,6 @@ CONTROLLER2=$( spawn_controller )
 register_dns $CONTROLLER1
 register_dns $CONTROLLER2
 
-
-#CONTROLLER1=controller-e8df6de0
-#CONTROLLER2=controller-1a4f0072
-
 wait_for_controller $CONTROLLER1
 wait_for_controller $CONTROLLER2
 echo Controllers ready !
@@ -114,12 +110,12 @@ POST_CONFIG=$( get_post_install_config $CONTROLLER1 $CONTROLLER1 $CONTROLLER2 )
 echo -e $POST_CONFIG
 
 ssh_command $CONTROLLER1 "echo -e \"$POST_CONFIG\" >> ~/contrail-installer/localrc"
-ssh_command $CONTROLLER1 "cd ~/contrail-installer; ./contrail.sh configure; ./contrail.sh stop; contrail.sh restart"
+ssh_command $CONTROLLER1 "cd ~/contrail-installer; ./contrail.sh configure; ./contrail.sh stop; ./contrail.sh restart"
 
 POST_CONFIG=$( get_post_install_config $CONTROLLER1 $CONTROLLER2 $CONTROLLER1 )
 echo -e $POST_CONFIG
 
 ssh_command $CONTROLLER2 "echo -e \"$POST_CONFIG\" >> ~/contrail-installer/localrc"
-ssh_command $CONTROLLER2 "cd ~/contrail-installer; ./contrail.sh configure; ./contrail.sh stop; contrail.sh restart"
+ssh_command $CONTROLLER2 "cd ~/contrail-installer; ./contrail.sh configure; ./contrail.sh stop; ./contrail.sh restart"
 
 echo Done
