@@ -10,10 +10,9 @@ IMAGE=${IMAGE:-5db66a8a-3165-4606-982d-43e89846c16f}
 ADM_NETWORK=${ADM_NETWORK:-c2abf4aa-3631-4d6d-a4ab-f54fed99bdfb}
 USR_NETWORK=${USR_NETWORK:-95b20e17-38c1-446e-b2b5-eecf6ced198f}
 
-unique_name()
+uuid()
 {
-     UUID=$( cat /proc/sys/kernel/random/uuid | cut -d '-' -f 1 )
-     echo $1-$UUID
+     echo $( cat /proc/sys/kernel/random/uuid | cut -d '-' -f 1 )
 }
 
 wait_for_controller()
@@ -30,7 +29,7 @@ wait_for_controller()
 
 spawn_controller()
 {
-    CONTROLLER_UUID=$( unique_name "controller" )
+    CONTROLLER_UUID=controller-${1}-$( uuid )
     
     nova --insecure boot --flavor m1.large --image $IMAGE --key-name $KEY_NAME \
         --nic net-id=$ADM_NETWORK --nic net-id=$USR_NETWORK \
@@ -103,8 +102,10 @@ ZOOKEEPER_IP_LIST=$CONFIG_IP
 EOF
 }
 
-CONTROLLER1=$( spawn_controller )
-CONTROLLER2=$( spawn_controller )
+BOOTSTRAP_ID=$( uuid )
+
+CONTROLLER1=$( spawn_controller $BOOTSTRAP_ID )
+CONTROLLER2=$( spawn_controller $BOOTSTRAP_ID )
 # From 10.10.0.0 to 10.210.255.0 to not conflict with VPN routes
 PUBLIC_SUBNET=10.$((($RANDOM % 200) + 10)).$((($RANDOM % 255) + 1)).0/24
 
@@ -132,6 +133,6 @@ ssh_command $CONTROLLER2 "cd ~/contrail-installer; ./contrail.sh configure; ./co
 ssh_command $CONTROLLER1 "cd ~/devstack && . openrc admin admin && neutron net-create --router:external --shared public && neutron subnet-create public $PUBLIC_SUBNET"
 sudo ip route add $PUBLIC_SUBNET via $(get_adm_ip $CONTROLLER1)
 
-echo $(date +%F-%H:%M:%S) $CONTROLLER1 $CONTROLLER2 $PUBLIC_SUBNET >> bootstraped
+echo $BOOTSTRAP_ID $(date +%F-%H:%M:%S) $CONTROLLER1 $CONTROLLER2 $PUBLIC_SUBNET >> bootstraped
 
 echo Done

@@ -19,7 +19,7 @@ def delete_route(subnet):
 
 
 def delete_bootstrap(*infos):
-    date, controller1, controller2, subnet = infos
+    id, date, controller1, controller2, subnet = infos
     delete_instance(controller1)
     delete_instance(controller2)
     delete_route(subnet)
@@ -42,7 +42,7 @@ if __name__ == "__main__":
         sys.exit()
 
     for idx, b in enumerate(bootstraps):
-        print ("{:d} - {} ({} {}, public subnet: {})".format(idx, *b))
+        print ("{0:d} - Created {2} ({3} and {4}, {5})".format(idx, *b))
 
     choice = input("Your choice : ")
     try:
