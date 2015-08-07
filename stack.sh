@@ -2,12 +2,13 @@
 
 [ -z $OS_USERNAME ] && echo "Source OS credentials first." && exit 0
 
-TLD="occi."
-KEY_NAME="bootstrap"
-IMAGE="5db66a8a-3165-4606-982d-43e89846c16f"
-ADM_NETWORK="c2abf4aa-3631-4d6d-a4ab-f54fed99bdfb"
-USR_NETWORK="95b20e17-38c1-446e-b2b5-eecf6ced198f"
+[ -f localrc ] && source localrc
 
+TLD=${TLD:-occi.}
+KEY_NAME=${KEY_NAME:-bootstrap}
+IMAGE=${IMAGE:-5db66a8a-3165-4606-982d-43e89846c16f}
+ADM_NETWORK=${ADM_NETWORK:-c2abf4aa-3631-4d6d-a4ab-f54fed99bdfb}
+USR_NETWORK=${USR_NETWORK:-95b20e17-38c1-446e-b2b5-eecf6ced198f}
 
 unique_name()
 {
