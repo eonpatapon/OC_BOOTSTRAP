@@ -56,7 +56,7 @@ ssh_command()
     NAME=$1
     CMD=$2
     IP=$( get_adm_ip $NAME )
-    ssh -oStrictHostKeyChecking=no $IP "$CMD"
+    ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $IP "$CMD"
 }
 
 register_dns()
