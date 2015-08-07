@@ -4,16 +4,19 @@
 
 [ -f localrc ] && source localrc
 
+uuid()
+{
+     echo $( cat /proc/sys/kernel/random/uuid | cut -d '-' -f 1 )
+}
+
 TLD=${TLD:-occi.}
 KEY_NAME=${KEY_NAME:-bootstrap}
 IMAGE=${IMAGE:-5db66a8a-3165-4606-982d-43e89846c16f}
 ADM_NETWORK=${ADM_NETWORK:-c2abf4aa-3631-4d6d-a4ab-f54fed99bdfb}
 USR_NETWORK=${USR_NETWORK:-95b20e17-38c1-446e-b2b5-eecf6ced198f}
 
-uuid()
-{
-     echo $( cat /proc/sys/kernel/random/uuid | cut -d '-' -f 1 )
-}
+BOOTSTARP_UUID=$( uuid )
+BOOTSTRAP_ID=${BOOTSTRAP_ID:-$BOOTSTARP_UUID}
 
 wait_for_controller()
 {
@@ -101,8 +104,6 @@ DISCOVERY_IP=$CONFIG_IP
 ZOOKEEPER_IP_LIST=$CONFIG_IP
 EOF
 }
-
-BOOTSTRAP_ID=$( uuid )
 
 CONTROLLER1=$( spawn_controller $BOOTSTRAP_ID )
 CONTROLLER2=$( spawn_controller $BOOTSTRAP_ID )
