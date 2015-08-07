@@ -19,6 +19,7 @@ packages:
   - vim
   - traceroute
   - htop
+  - jq
 
 write_files:
 -   content: |
