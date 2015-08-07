@@ -127,6 +127,8 @@ echo -e $POST_CONFIG
 ssh_command $CONTROLLER2 "echo -e \"$POST_CONFIG\" >> ~/contrail-installer/localrc"
 ssh_command $CONTROLLER2 "cd ~/contrail-installer; ./contrail.sh configure; ./contrail.sh stop; ./contrail.sh restart"
 
+# Public subnet creation
+ssh_command $CONTROLLER1 "cd ~/devstack && . openrc admin admin && neutron net-create --router:external --shared public && neutron subnet-create public $PUBLIC_SUBNET"
 sudo ip route add $PUBLIC_SUBNET via $(get_adm_ip $CONTROLLER1)
 
 echo $(date +%F-%H:%M:%S) $CONTROLLER1 $CONTROLLER2 $PUBLIC_SUBNET >> bootstraped
