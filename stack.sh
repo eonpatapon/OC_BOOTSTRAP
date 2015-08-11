@@ -110,6 +110,32 @@ CONTROLLER2=$( spawn_controller $BOOTSTRAP_ID )
 # From 10.10.0.0 to 10.210.255.0 to not conflict with VPN routes
 PUBLIC_SUBNET=10.$((($RANDOM % 200) + 10)).$((($RANDOM % 255) + 1)).0/24
 
+get_post_install_devstack_config()
+{
+    CONTROLLER1_IP=$( get_usr_ip $1 )
+
+cat <<EOF
+
+#--------------------------
+
+CASSANDRA_SERVER=$CONTROLLER1_IP
+RABBIT_HOST=$CONTROLLER1_IP
+KEYSTONE_SERVICE_HOST=$CONTROLLER1_IP
+SERVICE_HOST=$CONTROLLER1_IP
+MYSQL_HOST=$CONTROLLER1_IP
+RABBIT_HOST=$CONTROLLER1_IP
+GLANCE_HOSTPORT=$CONTROLLER1_IP:9292
+Q_HOST=$CONTROLLER1_IP
+ENABLED_SERVICES=n-cpu,n-api-meta,q-meta,neutron
+NOVA_VNC_ENABLED=True
+NOVNCPROXY_URL="http://$CONTROLLER1_IP:6080/vnc_auto.html"
+VNCSERVER_LISTEN=\$HOST_IP
+APISERVER_IP=$CONTROLLER1_IP
+APISERVER_PORT=8082
+VNCSERVER_PROXYCLIENT_ADDRESS=\$VNCSERVER_LISTEN
+EOF
+}
+
 register_dns $CONTROLLER1
 register_dns $CONTROLLER2
 
@@ -130,10 +156,13 @@ echo -e $POST_CONFIG
 ssh_command $CONTROLLER2 "echo -e \"$POST_CONFIG\" >> ~/contrail-installer/localrc"
 ssh_command $CONTROLLER2 "cd ~/contrail-installer; ./contrail.sh configure; ./contrail.sh stop; ./contrail.sh restart"
 
+ssh_command $CONTROLLER1 "echo -e \"CASSANDRA_SERVER=$( get_usr_ip $CONTROLLER1 )\" >> ~/devstack/localrc && cd ~/devstack && ./stack.sh"
+POST_CONFIG=$( get_post_install_devstack_config $CONTROLLER1 )
+ssh_command $CONTROLLER2 "echo -e \"$POST_CONFIG\" >> ~/devstack/localrc && cd ~/devstack && ./stack.sh"
+
 # Public subnet creation
 ssh_command $CONTROLLER1 "cd ~/devstack && . openrc admin admin && neutron net-create --router:external --shared public && neutron subnet-create public $PUBLIC_SUBNET"
 sudo ip route add $PUBLIC_SUBNET via $(get_adm_ip $CONTROLLER1)
 
 echo $BOOTSTRAP_ID $(date +%F-%H:%M:%S) $CONTROLLER1 $CONTROLLER2 $PUBLIC_SUBNET >> bootstraped
-
 echo Done
