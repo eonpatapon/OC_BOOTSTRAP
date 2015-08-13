@@ -30,7 +30,7 @@ write_files:
         tmux new-window -t opencontrail:1 -n contrail
         tmux new-window -t opencontrail:2 -n stack
 
-        tmux send-keys -t opencontrail:1 'sudo apt-get install -y git; cd ~/ && git clone https://github.com/Juniper/contrail-installer.git && cd ~/contrail-installer/ && cp /opt/opencontrail_localrc localrc && ./contrail.sh build && ./contrail.sh install && ./contrail.sh configure && /opt/cassandra_patching.sh && sudo pip install "greenlet>=0.4.7" && ./contrail.sh start && tmux send-keys -t opencontrail:2 "cd ~/ && git clone https://github.com/openstack-dev/devstack.git && cd ~/devstack && cp /opt/openstack_localrc localrc && cp ~/contrail-installer/devstack/lib/neutron_plugins/opencontrail lib/neutron_plugins/opencontrail" C-m' C-m
+        tmux send-keys -t opencontrail:1 'sudo apt-get install -y git; cd ~/ && mkdir -p setup && git clone https://github.com/Juniper/contrail-installer.git && cd ~/contrail-installer/ && cp /opt/opencontrail_localrc localrc && ./contrail.sh build > ~/setup/contrail-build.log 2>&1 && ./contrail.sh install > ~/setup/contrail-install.log 2>&1 && ./contrail.sh configure > ~/setup/contrail-configure-1.log 2>&1 && /opt/cassandra_patching.sh && sudo pip install "greenlet>=0.4.7" && ./contrail.sh start > ~/setup/contrail-start-1.log 2>&1 && tmux send-keys -t opencontrail:2 "cd ~/ && git clone https://github.com/openstack-dev/devstack.git && cd ~/devstack && cp /opt/openstack_localrc localrc && cp ~/contrail-installer/devstack/lib/neutron_plugins/opencontrail lib/neutron_plugins/opencontrail" C-m' C-m
 
         tmux select-window -t opencontrail:0
     path: /opt/opencontrail_run.sh

@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import sys
+import shutil
 from subprocess import call
 
 bootstraps = []
@@ -23,6 +24,11 @@ def delete_bootstrap(*infos):
     delete_instance(controller1)
     delete_instance(controller2)
     delete_route(subnet)
+    # Remove log files
+    try:
+        shutil.rmtree(id)
+    except OSError: 
+        pass
     # Remove deleted bootstrap from file
     with open('bootstraped', 'r+') as h:
         content = "\n".join(filter(lambda l: " ".join(infos) not in l, h))

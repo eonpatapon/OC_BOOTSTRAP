@@ -15,8 +15,9 @@ IMAGE=${IMAGE:-5db66a8a-3165-4606-982d-43e89846c16f}
 ADM_NETWORK=${ADM_NETWORK:-c2abf4aa-3631-4d6d-a4ab-f54fed99bdfb}
 USR_NETWORK=${USR_NETWORK:-95b20e17-38c1-446e-b2b5-eecf6ced198f}
 
-BOOTSTARP_UUID=$( uuid )
-BOOTSTRAP_ID=${BOOTSTRAP_ID:-$BOOTSTARP_UUID}
+BOOTSTRAP_UUID=$( uuid )
+
+test -n $BOOTSTRAP_PREFIX && BOOTSTRAP_ID=$BOOTSTRAP_PREFIX-$BOOTSTRAP_UUID || BOOTSTRAP_ID=$BOOTSTRAP_UUID
 
 wait_for_controller()
 {
@@ -61,6 +62,21 @@ ssh_command()
     ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $IP "$CMD"
 }
 
+rsync_command()
+{
+    NAME=$1
+    IP=$( get_adm_ip $NAME )
+    SRCS=()
+    for src in ${@:2}
+    do
+        SRCS+=( "$IP:$src" )
+    done
+    unset SRCS[${#SRCS[@]}-1]
+    DST=${@: -1}
+
+    rsync -avP -e "ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null" ${SRCS[@]} "$DST"
+}
+
 register_dns()
 {
     NODE_NAME=$1
@@ -98,17 +114,12 @@ CONTROL_IP=$CONTROLLER1_IP
 USE_DISCOVERY=True
 CASSANDRA_IP=$CONFIG_IP
 CASSANDRA_IP_LIST=$CONFIG_IP
-DNS_IP_LIST=$CONFIG_IP
+DNS_IP_LIST=("$CONTROLLER1_IP" "$CONTROLLER2_IP")
 CONTROL_IP_LIST=("$CONTROLLER1_IP" "$CONTROLLER2_IP")
 DISCOVERY_IP=$CONFIG_IP
 ZOOKEEPER_IP_LIST=$CONFIG_IP
 EOF
 }
-
-CONTROLLER1=$( spawn_controller $BOOTSTRAP_ID )
-CONTROLLER2=$( spawn_controller $BOOTSTRAP_ID )
-# From 10.10.0.0 to 10.210.255.0 to not conflict with VPN routes
-PUBLIC_SUBNET=10.$((($RANDOM % 200) + 10)).$((($RANDOM % 255) + 1)).0/24
 
 get_post_install_devstack_config()
 {
@@ -136,11 +147,28 @@ VNCSERVER_PROXYCLIENT_ADDRESS=\$VNCSERVER_LISTEN
 EOF
 }
 
+get_logs()
+{
+    rsync_command $1 /home/cloud/setup/ $BOOTSTRAP_ID/$1/
+}
+
+
+CONTROLLER1=$( spawn_controller $BOOTSTRAP_ID )
+CONTROLLER2=$( spawn_controller $BOOTSTRAP_ID )
+# From 10.10.0.0 to 10.210.255.0 to not conflict with VPN routes
+PUBLIC_SUBNET=10.$((($RANDOM % 200) + 10)).$((($RANDOM % 255) + 1)).0/24
+
+mkdir -p $BOOTSTRAP_ID/$CONTROLLER1
+mkdir -p $BOOTSTRAP_ID/$CONTROLLER2
+
 register_dns $CONTROLLER1
 register_dns $CONTROLLER2
 
 wait_for_controller $CONTROLLER1
+get_logs $CONTROLLER1
+
 wait_for_controller $CONTROLLER2
+get_logs $CONTROLLER2
 echo Controllers ready !
 
 echo Updating controller configurations
@@ -148,20 +176,27 @@ POST_CONFIG=$( get_post_install_config $CONTROLLER1 $CONTROLLER1 $CONTROLLER2 $P
 echo -e $POST_CONFIG
 
 ssh_command $CONTROLLER1 "echo -e \"$POST_CONFIG\" >> ~/contrail-installer/localrc"
-ssh_command $CONTROLLER1 "cd ~/contrail-installer; ./contrail.sh configure; ./contrail.sh stop; ./contrail.sh restart"
+ssh_command $CONTROLLER1 "cd ~/contrail-installer && ./contrail.sh configure > ~/setup/contrail-configure-2.log 2>&1 && ./contrail.sh stop && ./contrail.sh start > ~/setup/contrail-start-2.log 2>&1"
+get_logs $CONTROLLER1
 
 POST_CONFIG=$( get_post_install_config $CONTROLLER1 $CONTROLLER2 $CONTROLLER1 $PUBLIC_SUBNET )
 echo -e $POST_CONFIG
 
 ssh_command $CONTROLLER2 "echo -e \"$POST_CONFIG\" >> ~/contrail-installer/localrc"
-ssh_command $CONTROLLER2 "cd ~/contrail-installer; ./contrail.sh configure; ./contrail.sh stop; ./contrail.sh restart"
+ssh_command $CONTROLLER2 "cd ~/contrail-installer && ./contrail.sh configure > ~/setup/contrail-configure-2.log 2>&1 && ./contrail.sh stop && ./contrail.sh start > ~/setup/contrail-start-2.log 2>&1"
+get_logs $CONTROLLER2
 
-ssh_command $CONTROLLER1 "echo -e \"CASSANDRA_SERVER=$( get_usr_ip $CONTROLLER1 )\" >> ~/devstack/localrc && cd ~/devstack && ./stack.sh"
+ssh_command $CONTROLLER1 "echo -e \"CASSANDRA_SERVER=$( get_usr_ip $CONTROLLER1 )\" >> ~/devstack/localrc && cd ~/devstack && ./stack.sh > ~/setup/stack-install.log 2>&1"
+get_logs $CONTROLLER1
+
 POST_CONFIG=$( get_post_install_devstack_config $CONTROLLER1 )
-ssh_command $CONTROLLER2 "echo -e \"$POST_CONFIG\" >> ~/devstack/localrc && cd ~/devstack && ./stack.sh"
+ssh_command $CONTROLLER2 "echo -e \"$POST_CONFIG\" >> ~/devstack/localrc && cd ~/devstack && ./stack.sh > ~/setup/stack-install.log 2>&1"
+get_logs $CONTROLLER2
 
 # Public subnet creation
-ssh_command $CONTROLLER1 "cd ~/devstack && . openrc admin admin && neutron net-create --router:external --shared public && neutron subnet-create public $PUBLIC_SUBNET"
+sleep 5
+ssh_command $CONTROLLER1 "cd ~/devstack && source openrc admin admin && neutron net-create --router:external --shared public && neutron subnet-create public $PUBLIC_SUBNET > ~/setup/public-subnet.log 2>&1"
+get_logs $CONTROLLER1
 sudo ip route add $PUBLIC_SUBNET via $(get_adm_ip $CONTROLLER1)
 
 echo $BOOTSTRAP_ID $(date +%F-%H:%M:%S) $CONTROLLER1 $CONTROLLER2 $PUBLIC_SUBNET >> bootstraped
