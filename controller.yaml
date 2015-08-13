@@ -104,6 +104,7 @@ write_files:
         enable_service q-svc
         enable_service q-meta
         enable_service neutron
+        enable_service tempest
         disable_service q-agt
         disable_service q-dhcp
         disable_service q-l3
