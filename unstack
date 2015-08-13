@@ -13,21 +13,14 @@ def delete_instance(name):
         print("Failed :(")
 
 
-def delete_route(subnet):
-    print("Removing route to {}".format(subnet))
-    if not call(["sudo", "ip", "route", "del", subnet]) == 0:
-        print("Failed :(")
-
-
 def delete_bootstrap(*infos):
     id, date, controller1, controller2, subnet = infos
     delete_instance(controller1)
     delete_instance(controller2)
-    delete_route(subnet)
     # Remove log files
     try:
         shutil.rmtree(id)
-    except OSError: 
+    except OSError:
         pass
     # Remove deleted bootstrap from file
     with open('bootstraped', 'r+') as h:

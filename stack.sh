@@ -197,7 +197,6 @@ get_logs $CONTROLLER2
 sleep 5
 ssh_command $CONTROLLER1 "cd ~/devstack && source openrc admin admin && neutron net-create --router:external --shared public && neutron subnet-create public $PUBLIC_SUBNET > ~/setup/public-subnet.log 2>&1"
 get_logs $CONTROLLER1
-sudo ip route add $PUBLIC_SUBNET via $(get_adm_ip $CONTROLLER1)
 
 ssh_command $CONTROLLER1 'ssh-keygen -t rsa -N "" -f ~/.ssh/id_rsa'
 ssh_command $CONTROLLER1 "cd ~/devstack && source openrc admin admin && nova keypair-add --pub-key ~/.ssh/id_rsa.pub bootstrap"
