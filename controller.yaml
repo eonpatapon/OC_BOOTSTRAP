@@ -39,7 +39,7 @@ write_files:
         cd /opt/stack/contrail/openstack/neutron_plugin
         git remote add cass https://github.com/anbu-enovance/contrail-neutron-plugin
         git fetch cass cassandra-modifications
-        git cherry-pick 9b382747f9671f041dddb7754424124426107209
+        git cherry-pick ccc0405c707d0964490db413d2284cb56361a9b1 
         sudo pip install -e .
         cat <<EOF | patch ~/contrail-installer/devstack/lib/neutron_plugins/opencontrail
         31a32,33
