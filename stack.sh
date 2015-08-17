@@ -57,9 +57,8 @@ get_usr_ip()
 ssh_command()
 {
     NAME=$1
-    CMD=$2
     IP=$( get_adm_ip $NAME )
-    ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $IP "$CMD"
+    ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null $IP $@
 }
 
 rsync_command()
@@ -193,13 +192,22 @@ POST_CONFIG=$( get_post_install_devstack_config $CONTROLLER1 )
 ssh_command $CONTROLLER2 "echo -e \"$POST_CONFIG\" >> ~/devstack/localrc && cd ~/devstack && ./stack.sh > ~/setup/stack-install.log 2>&1"
 get_logs $CONTROLLER2
 
-# Public subnet creation
 sleep 5
-ssh_command $CONTROLLER1 "cd ~/devstack && source openrc admin admin && neutron net-create --router:external --shared public && neutron subnet-create public $PUBLIC_SUBNET > ~/setup/public-subnet.log 2>&1"
+ssh_command $CONTROLLER1 << EOF
+    cd ~/devstack && source openrc admin admin
+    # create public network and subnet
+    neutron net-create --router:external --shared public && neutron subnet-create public $PUBLIC_SUBNET > ~/setup/public-subnet.log 2>&1
+    # generate and import SSH key
+    ssh-keygen -t rsa -N "" -f ~/.ssh/id_rsa && nova keypair-add --pub-key ~/.ssh/id_rsa.pub bootstrap
+    # configure tempest
+    CONF=/opt/stack/tempest/etc/tempest.conf
+    PUBLIC_NETWORK_ID=$(neutron net-list | grep public | awk '{ print $2 }')
+    iniset $CONF network public_network_id ${PUBLIC_NETWORK_ID}
+    iniset $CONF network-feature-enabled api_extensions "security-group, binding, quotas, router, external-net, allowed-address-pairs, extra_dhcp_opt"
+    iniset $CONF ipv6_subnet_attributes false
+    iniset $CONF ipv6 false
+EOF
 get_logs $CONTROLLER1
-
-ssh_command $CONTROLLER1 'ssh-keygen -t rsa -N "" -f ~/.ssh/id_rsa'
-ssh_command $CONTROLLER1 "cd ~/devstack && source openrc admin admin && nova keypair-add --pub-key ~/.ssh/id_rsa.pub bootstrap"
 
 echo $BOOTSTRAP_ID $(date +%F-%H:%M:%S) $CONTROLLER1 $CONTROLLER2 $PUBLIC_SUBNET >> bootstraped
 echo Done
