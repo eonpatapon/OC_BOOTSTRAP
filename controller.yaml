@@ -30,25 +30,57 @@ write_files:
         tmux new-window -t opencontrail:1 -n contrail
         tmux new-window -t opencontrail:2 -n stack
 
-        tmux send-keys -t opencontrail:1 'sudo apt-get install -y git; cd ~/ && mkdir -p setup && git clone https://github.com/Juniper/contrail-installer.git && cd ~/contrail-installer/ && cp /opt/opencontrail_localrc localrc && ./contrail.sh build > ~/setup/contrail-build.log 2>&1 && ./contrail.sh install > ~/setup/contrail-install.log 2>&1 && ./contrail.sh configure > ~/setup/contrail-configure-1.log 2>&1 && /opt/cassandra_patching.sh && sudo pip install "greenlet>=0.4.7" && ./contrail.sh start > ~/setup/contrail-start-1.log 2>&1 && tmux send-keys -t opencontrail:2 "cd ~/ && git clone https://github.com/openstack-dev/devstack.git && cd ~/devstack && cp /opt/openstack_localrc localrc && cp ~/contrail-installer/devstack/lib/neutron_plugins/opencontrail lib/neutron_plugins/opencontrail" C-m' C-m
+        tmux send-keys -t opencontrail:1 'sudo apt-get install -y git; cd ~/ && mkdir -p setup && git clone https://github.com/Juniper/contrail-installer.git && cd ~/contrail-installer/ && cp /opt/opencontrail_localrc localrc && ./contrail.sh build > ~/setup/contrail-build.log 2>&1 && /opt/patcher.sh /opt/patches.txt && ./contrail.sh install > ~/setup/contrail-install.log 2>&1 && ./contrail.sh configure > ~/setup/contrail-configure-1.log 2>&1 && /opt/cassandra_config_neutron.sh && sudo pip install "greenlet>=0.4.7" && ./contrail.sh start > ~/setup/contrail-start-1.log 2>&1 && tmux send-keys -t opencontrail:2 "cd ~/ && git clone https://github.com/openstack-dev/devstack.git && cd ~/devstack && cp /opt/openstack_localrc localrc && cp ~/contrail-installer/devstack/lib/neutron_plugins/opencontrail lib/neutron_plugins/opencontrail" C-m' C-m
 
         tmux select-window -t opencontrail:0
     path: /opt/opencontrail_run.sh
     permissions: 0775
 -   content: |
-        cd /opt/stack/contrail/openstack/neutron_plugin
-        git remote add cass https://github.com/anbu-enovance/contrail-neutron-plugin
-        git fetch cass cassandra-modifications
-        git cherry-pick ccc0405c707d0964490db413d2284cb56361a9b1 
-        sudo pip install -e .
         cat <<EOF | patch ~/contrail-installer/devstack/lib/neutron_plugins/opencontrail
         31a32,33
         > 
         >     iniset \$NEUTRON_PLUGIN_CONF CASSANDRA_SERVER cassandra_server_list \$CASSANDRA_SERVER:9160
         EOF
  
-    path: /opt/cassandra_patching.sh
+    path: /opt/cassandra_config_neutron.sh
     permissions: 0775
+-   content: |
+        #!/usr/bin/env bash
+
+        while read line
+        do
+        if [[ $line == \#* ]] || [[ -z $line ]]; then
+        continue
+        fi
+
+        repo=$(echo $line | cut -f1 -d ' ')
+        branch=$(echo $line | cut -f2 -d ' ')
+        sha=$(echo $line | cut -f3 -d ' ')
+        path=$(echo $line | cut -f4 -d ' ')
+
+        if [[ -z $repo ]] || [[ -z $branch ]] || [[ -z $sha ]] || [[ -z $path ]]; then
+        continue
+        fi
+
+        cd $path 2> /dev/null
+        git fetch $repo $branch 2> /dev/null
+        git cherry-pick $sha 2>/dev/null
+        done<$1
+    path: /opt/patcher.sh
+    permissions: 0775
+-   content: | 
+        # File to specify the patches that needs to be cherry picked.
+        # Each patch must be in a line in the following format
+        #
+        # repository-url<SPACE>branch-name<SPACE>commit-sha<SPACE>local-path
+        # Ex.
+        # To patch from github from a remote branch xyz, commit sha ccfd321 on to path, following is used
+        # https://github.com/repo.git xyz ccfd321 /opt/stack/contrail/controller/
+        # https://anbu@review.opencontrail.org/Juniper/contrail-controller refs/changes/72/6072/1 FETCH_HEAD /opt/stack/contrail/controller
+        https://github.com/anbu-enovance/contrail-neutron-plugin cassandra-modifications f1e9ed3ce645669385884b25e06e60a9cda44ec2 /opt/stack/contrail/openstack/neutron_plugin
+
+    path: /opt/patches.txt
+    permissions: 644
 -   content: |
         STACK_DIR=$(cd $(dirname $0) && pwd)
 
