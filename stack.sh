@@ -15,6 +15,7 @@ IMAGE=${IMAGE:-5db66a8a-3165-4606-982d-43e89846c16f}
 FLAVOR=${FLAVOR:-m1.large}
 ADM_NETWORK=${ADM_NETWORK:-c2abf4aa-3631-4d6d-a4ab-f54fed99bdfb}
 USR_NETWORK=${USR_NETWORK:-95b20e17-38c1-446e-b2b5-eecf6ced198f}
+NOVA_OPTS=${NOVA_OPTS:-}
 
 BOOTSTRAP_UUID=$( uuid )
 
@@ -27,7 +28,7 @@ wait_for_controller()
     while true
     do
         echo Waiting for $CONTROLLER
-        CONTROLLER_IP=$( nova --insecure show $CONTROLLER | grep "adm network" | awk -F '|' '{print $3}' | tr -d '[[:space:]]' )
+        CONTROLLER_IP=$( nova $NOVA_OPTS show $CONTROLLER | grep "adm network" | awk -F '|' '{print $3}' | tr -d '[[:space:]]' )
         curl http://$CONTROLLER_IP:8082 2>/dev/null 1>/dev/null && break
     done
 }
@@ -36,7 +37,7 @@ spawn_controller()
 {
     CONTROLLER_UUID=controller-${1}-$( uuid )
     
-    nova --insecure boot --flavor $FLAVOR --image $IMAGE --key-name $KEY_NAME \
+    nova $NOVA_OPTS boot --flavor $FLAVOR --image $IMAGE --key-name $KEY_NAME \
         --nic net-id=$ADM_NETWORK --nic net-id=$USR_NETWORK \
         --user-data controller.yaml $CONTROLLER_UUID > /dev/null
 
@@ -46,13 +47,13 @@ spawn_controller()
 get_adm_ip()
 {
     NAME=$1
-    nova --insecure show $NAME | grep "adm network" | awk -F '|' '{print $3}' | tr -d '[[:space:]]'
+    nova $NOVA_OPTS show $NAME | grep "adm network" | awk -F '|' '{print $3}' | tr -d '[[:space:]]'
 }
 
 get_usr_ip()
 {
     NAME=$1
-    nova --insecure show $NAME | grep "usr network" | awk -F '|' '{print $3}' | tr -d '[[:space:]]'
+    nova $NOVA_OPTS show $NAME | grep "usr network" | awk -F '|' '{print $3}' | tr -d '[[:space:]]'
 }
 
 ssh_command()
