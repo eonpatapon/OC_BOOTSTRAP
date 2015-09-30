@@ -12,6 +12,7 @@ uuid()
 TLD=${TLD:-occi.}
 KEY_NAME=${KEY_NAME:-bootstrap}
 IMAGE=${IMAGE:-5db66a8a-3165-4606-982d-43e89846c16f}
+FLAVOR=${FLAVOR:-m1.large}
 ADM_NETWORK=${ADM_NETWORK:-c2abf4aa-3631-4d6d-a4ab-f54fed99bdfb}
 USR_NETWORK=${USR_NETWORK:-95b20e17-38c1-446e-b2b5-eecf6ced198f}
 
@@ -35,7 +36,7 @@ spawn_controller()
 {
     CONTROLLER_UUID=controller-${1}-$( uuid )
     
-    nova --insecure boot --flavor m1.large --image $IMAGE --key-name $KEY_NAME \
+    nova --insecure boot --flavor $FLAVOR --image $IMAGE --key-name $KEY_NAME \
         --nic net-id=$ADM_NETWORK --nic net-id=$USR_NETWORK \
         --user-data controller.yaml $CONTROLLER_UUID > /dev/null
 

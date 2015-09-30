@@ -30,7 +30,7 @@ write_files:
         tmux new-window -t opencontrail:1 -n contrail
         tmux new-window -t opencontrail:2 -n stack
 
-        tmux send-keys -t opencontrail:1 'sudo apt-get install -y git; cd ~/ && mkdir -p setup && git clone https://github.com/Juniper/contrail-installer.git && cd ~/contrail-installer/ && cp /opt/opencontrail_localrc localrc && ./contrail.sh build > ~/setup/contrail-build.log 2>&1 && /opt/patcher.sh /opt/patches.txt && ./contrail.sh install > ~/setup/contrail-install.log 2>&1 && ./contrail.sh configure > ~/setup/contrail-configure-1.log 2>&1 && /opt/cassandra_config_neutron.sh && sudo pip install "greenlet>=0.4.7" && ./contrail.sh start > ~/setup/contrail-start-1.log 2>&1 && tmux send-keys -t opencontrail:2 "cd ~/ && git clone https://github.com/openstack-dev/devstack.git && cd ~/devstack && cp /opt/openstack_localrc localrc && cp ~/contrail-installer/devstack/lib/neutron_plugins/opencontrail lib/neutron_plugins/opencontrail" C-m' C-m
+        tmux send-keys -t opencontrail:1 'sudo apt-get install -y git; cd ~/ && mkdir -p setup && git clone https://github.com/Juniper/contrail-installer.git && cd ~/contrail-installer/ && cp /opt/opencontrail_localrc localrc && ./contrail.sh build > ~/setup/contrail-build.log 2>&1 && /opt/patcher.sh /opt/patches.txt && ./contrail.sh install > ~/setup/contrail-install.log 2>&1 && ./contrail.sh configure > ~/setup/contrail-configure-1.log 2>&1 && /opt/cassandra_config_neutron.sh && sudo pip install "greenlet>=0.4.7" && ./contrail.sh start > ~/setup/contrail-start-1.log 2>&1 && tmux send-keys -t opencontrail:2 "cd ~/ && git clone https://github.com/openstack-dev/devstack.git && cd ~/devstack && cp /opt/openstack_localrc local.conf && cp ~/contrail-installer/devstack/lib/neutron_plugins/opencontrail lib/neutron_plugins/opencontrail" C-m' C-m
 
         tmux select-window -t opencontrail:0
     path: /opt/opencontrail_run.sh
@@ -117,6 +117,7 @@ write_files:
     path: /opt/opencontrail_localrc
     permissions: 0664
 -   content: |
+        [[local|localrc]]
         STACK_DIR=$(cd $(dirname $0) && pwd)
 
         LOG_DIR=$STACK_DIR/log/screens
@@ -160,8 +161,21 @@ write_files:
         MULTI_HOST=1
         MULTI_TENANCY=true
 
-        # opencontrail nova plugin
-        NOVA_VIF_DRIVER=nova_contrail_vif.contrailvif.VRouterVIFDriver
+        [[post-config|$NOVA_CONF]]
+        [DEFAULT]
+        network_api_class = nova_contrail_vif.contrailvif.ContrailNetworkAPI
+        [libvirt]
+        vif_driver = nova_contrail_vif.contrailvif.VRouterVIFDriver
+        virt_type = qemu
+
+        [[post-config|$NEUTRON_CONF]]
+        [DEFAULT]
+        api_extensions_path = /opt/stack/contrail/openstack/neutron_plugin/neutron_plugin_contrail/extensions
+        core_plugin = neutron_plugin_contrail.plugins.opencontrail.contrail_plugin_v3.NeutronPluginContrailCoreV3
+        service_plugins = neutron_plugin_contrail.plugins.opencontrail.loadbalancer.plugin.LoadBalancerPlugin
+        [quotas]
+        quota_driver = neutron_plugin_contrail.plugins.opencontrail.quota.driver.QuotaDriver
+
     path: /opt/openstack_localrc
     permissions: 0664
 
@@ -169,7 +183,6 @@ final_message: "!!! Starting building OpenContrail !!! (cloudinit runs in $UPTIM
 
 runcmd:
   - [ sh, -xc, "cp /etc/network/interfaces.d/eth0.cfg /etc/network/interfaces.d/eth1.cfg && sed -i 's/eth0/eth1/g' /etc/network/interfaces.d/eth1.cfg && ifup eth1"]
-  - [ sh, -xc, "echo '127.0.0.1 $(wget -q -O- http://169.254.169.254/latest/meta-data/hostname | cut -d .  -f 1)' >> /etc/hosts" ]
   - [ sh, -xc, "su cloud -c 'cd ~; git clone https://github.com/nojhan/liquidprompt.git'" ]
   - [ sh, -xc, "echo 'source ~/liquidprompt/liquidprompt' >> /home/cloud/.bashrc" ]
   - [ sh, -xc, "su cloud -c 'test $(which git) && git config --global http.sslVerify false'"]
